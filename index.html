@@ -3,7 +3,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#e9e6f7">
 <title>FF & Gmail Store</title>
-<link rel="manifest" href="manifest.json"><script>if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js')</script>
+<script>if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{})}</script>
 <style>
 :root{--bg:#e9e6f7;--bg2:#d9ecf2;--card:#f6f4ff;--bd:#ffffffcc;--tx:#2b2f4a;--mut:#74789a;--ac:#7c6cf0;--acd:#5a4bc7;--ok:#3aa981;--okd:#25805f;--rd:#e0627a;--rdd:#b8445a;--gm:#e8708a;
 --sh:0 1px 0 #fff inset,0 14px 28px -12px #5a4bc760,0 3px 8px -2px #5a4bc728;--bf:none;--o1:#c7b8ff;--o2:#a8e6d7;--o3:#ffd0dc;--in:#ecebfa}
@@ -72,8 +72,8 @@ import{getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,signOut,onA
 import{getFirestore,collection,doc,addDoc,setDoc,getDoc,updateDoc,deleteDoc,onSnapshot,query,where}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig={apiKey:"AIzaSyBRtbN4UfJfwUPT1tSJoVsQuoqW5f9-3p8",authDomain:"ffstore-84973.firebaseapp.com",projectId:"ffstore-84973",appId:"1:457072994201:web:e0dc375b2951ac8ce31508"};
-const OWNER_EMAIL="studentpratyush2010@gmail.com"; // main owner (can add/remove other owners)
-const OWNER_WA=""; // optional: "919876543210" (with country code) shows a "Chat with owner" button
+const OWNER_EMAIL="studentpratyush2010@gmail.com";
+const OWNER_WA="";
 
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 const $=s=>document.querySelector(s);
@@ -89,7 +89,27 @@ let unsubs=[],ou=null;
 
 function toast(m,bad){const t=document.createElement('div');t.className='toast'+(bad?' bad':'');t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
 const run=async(b,fn)=>{if(b.disabled)return;b.disabled=true;const o=b.textContent;b.textContent='⏳ ...';try{await fn()}catch(e){if(e!=='x')toast(e.message||String(e),1)}finally{if(b.isConnected){b.disabled=false;b.textContent=o}}};
-const shrink=(f,max=800)=>new Promise((ok,no)=>{if(!f)return no(new Error('Please choose a photo / screenshot'));if(!f.type.startsWith('image/'))return no(new Error('Images only'));const r=new FileReader();r.onerror=()=>no(new Error('Could not read file'));r.onload=()=>{const i=new Image();i.onerror=()=>no(new Error('Image is corrupted'));i.onload=()=>{const k=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',.65))};i.src=r.result};r.readAsDataURL(f)});
+
+// Optimized shrink: compresses heavily to respect Firestore 1MB document limit
+const shrink=(f,max=500)=>new Promise((ok,no)=>{
+  if(!f)return ok('');
+  if(!f.type.startsWith('image/'))return no(new Error('Images only'));
+  const r=new FileReader();
+  r.onerror=()=>no(new Error('Could not read file'));
+  r.onload=()=>{
+    const i=new Image();
+    i.onerror=()=>no(new Error('Image is corrupted'));
+    i.onload=()=>{
+      const k=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement('canvas');
+      c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);
+      c.getContext('2d').drawImage(i,0,0,c.width,c.height);
+      ok(c.toDataURL('image/jpeg',0.55));
+    };
+    i.src=r.result;
+  };
+  r.readAsDataURL(f);
+});
+
 const openModal=h=>{$('#modal').innerHTML=`<div class="modal"><div class="sheet"><button class="s x" data-act="closem">✕</button>${h}</div></div>`};
 const closeModal=()=>$('#modal').innerHTML='';
 const typing=()=>{const a=document.activeElement;return a&&['INPUT','TEXTAREA','SELECT'].includes(a.tagName)&&a.id!=='q'};
@@ -104,7 +124,8 @@ function subOrders(){ou&&ou();const x=st.u;if(!x)return;
 onAuthStateChanged(auth,x=>{
   unsubs.forEach(f=>f());unsubs=[];ou&&ou();ou=null;
   st.u=x;st.owners=[];st.owner=chkOwner();st.main=!!x&&lc(x.email)===lc(OWNER_EMAIL);st.ready=true;
-  if(x){setDoc(doc(db,'users',x.uid),{name:x.displayName||'',email:x.email,last:Date.now()},{merge:true}).catch(()=>{});
+  if(x){
+    setDoc(doc(db,'users',x.uid),{name:x.displayName||'',email:x.email,last:Date.now()},{merge:true}).catch(()=>{});
     subOrders();
     unsubs.push(onSnapshot(collection(db,'items'),s=>{st.items=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.ts||0)-(a.ts||0));render()},er));
     unsubs.push(onSnapshot(doc(db,'settings','qr'),s=>{st.qr=(s.data()||{}).img||'';render()},er));
@@ -112,9 +133,14 @@ onAuthStateChanged(auth,x=>{
   }else{st.items=[];st.orders=[];st.qr=''}
   render(true);
 });
-const login=async()=>{const p=new GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});
-  try{await signInWithPopup(auth,p)}catch(e){if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(e.code))return signInWithRedirect(auth,p);
-    if(!['auth/popup-closed-by-user','auth/cancelled-popup-request'].includes(e.code))toast(e.message,1)}};
+
+const login=async()=>{
+  const p=new GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});
+  try{await signInWithPopup(auth,p)}catch(e){
+    if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(e.code))return signInWithRedirect(auth,p);
+    if(!['auth/popup-closed-by-user','auth/cancelled-popup-request'].includes(e.code))toast(e.message,1);
+  }
+};
 
 const chips=(list,cur,a)=>`<div class="chips">${list.map(([k,l])=>`<button class="${cur===k?'':'s'}" data-act="${a}" data-id="${k}">${l}</button>`).join('')}</div>`;
 const empty=m=>`<div class="card mut c">${m}</div>`;
@@ -130,21 +156,29 @@ function render(force){
   $('#nav').innerHTML=tabs.map(([k,ic,l])=>`<button class="${tab===k?'on':''}" data-act="tab" data-id="${k}"><span>${ic}</span>${l}${k==='adm'&&pc?`<i>${pc}</i>`:''}</button>`).join('');
   A.innerHTML=tab==='shop'||tab==='apk'?shop():tab==='cust'?cust():tab==='my'?hist():owner?admin():'';
 }
+
 const live=()=>st.items.filter(i=>!i.sold);
-function grid(){const q=st.q.toLowerCase(),l=live().filter(i=>(st.tab==='apk'?i.type==='APK':i.type!=='APK'&&(st.cat==='All'||i.type===st.cat))&&(!q||(i.title+' '+(i.desc||'')).toLowerCase().includes(q)));
-  return l.length?l.map(i=>`<div class="card" data-act="buy" data-id="${i.id}"><img class="p" src="${img(i.photo)}" alt=""><div style="margin:8px 0 3px"><span class="tag ${esc(i.type)}">${esc(i.type)}</span></div><b>${esc(i.title)}</b><div class="price">${money(i.price)}</div></div>`).join(''):empty('No items found.')}
+function grid(){
+  const q=st.q.toLowerCase(),l=live().filter(i=>(st.tab==='apk'?i.type==='APK':i.type!=='APK'&&(st.cat==='All'||i.type===st.cat))&&(!q||(i.title+' '+(i.desc||'')).toLowerCase().includes(q)));
+  return l.length?l.map(i=>`<div class="card" data-act="buy" data-id="${i.id}"><img class="p" src="${img(i.photo)}" alt=""><div style="margin:8px 0 3px"><span class="tag ${esc(i.type)}">${esc(i.type)}</span></div><b>${esc(i.title)}</b><div class="price">${money(i.price)}</div></div>`).join(''):empty('No items found.');
+}
 const shop=()=>`<input id="q" placeholder="🔍 Search items" value="${esc(st.q)}">${st.tab==='apk'?'':chips([['All','All'],['FF','FF'],['Gmail','Gmail']],st.cat,'cat')}<div class="grid" id="grid">${grid()}</div>`;
-const payBox=()=>st.qr?`<img class="qr" src="${img(st.qr)}"><input id="utr" placeholder="UTR / Transaction ID"><input id="sf" type="file" accept="image/*">`:'<p class="mut">The owner has not set a payment QR yet.</p>';
+const payBox=()=>st.qr?`<img class="qr" src="${img(st.qr)}"><input id="utr" placeholder="UTR / Transaction ID (Required)"><label class="mut" style="font-size:12px;margin-left:4px">Upload Payment Screenshot:</label><input id="sf" type="file" accept="image/*">`:'<p class="mut">The owner has not set a payment QR yet.</p>';
 const cust=()=>`<div class="card"><b>✍️ Request something custom</b><p class="mut">Describe what you need (FF level, skins, Gmail age...). Pay your budget and upload the screenshot. The owner will confirm or reject.</p><textarea id="cr" rows="4" placeholder="What do you need?"></textarea><input id="cb" placeholder="Budget ₹" inputmode="numeric"><input id="cc" placeholder="Contact: WhatsApp / Telegram (optional)">${payBox()}<button data-act="cpay">Send request</button></div>`;
 const ocard=(o,own)=>`<div class="card"><div class="row"><b>${esc(o.title)}</b><span class="b ${o.status}">${LBL[o.status]||''}</span></div><div class="mut">${money(o.price)} · ${when(o.ts)}</div>
-${own?`<div class="mut">${esc(o.name)} · ${esc(o.email)}</div>`:''}${o.request?`<div>📝 ${esc(o.request)}</div>`:''}${own&&o.contact?`<div class="mut">📞 ${esc(o.contact)}</div>`:''}${o.utr?`<div class="mut">UTR: ${esc(o.utr)}</div>`:''}
+${own?`<div class="mut">${esc(o.name)} ·${esc(o.email)}</div>`:''}${o.request?`<div>📝 ${esc(o.request)}</div>`:''}${own&&o.contact?`<div class="mut">📞 ${esc(o.contact)}</div>`:''}${o.utr?`<div class="mut">UTR: ${esc(o.utr)}</div>`:''}
 ${own&&img(o.shot)?`<img class="shot" src="${img(o.shot)}" data-act="zoom" data-id="${o.id}">`:''}${o.status==='rejected'&&o.note?`<div class="mut">${esc(o.note)}</div>`:''}
 ${o.status==='confirmed'&&o.delivery?`<pre>${esc(o.delivery)}</pre><button class="s" data-act="copy" data-id="${o.id}">📋 Copy</button>`:''}
 ${own&&o.status==='pending'?`<div class="row" style="margin-top:8px"><button class="g" data-act="ok" data-id="${o.id}">Confirm ✅</button><button class="r" data-act="rej" data-id="${o.id}">Reject</button></div>`:''}
 ${own&&o.status==='confirmed'?`<button class="s" data-act="fix" data-id="${o.id}">Edit delivery</button>`:''}</div>`;
-function hist(){const m=st.orders.filter(o=>o.buyer===st.u.uid&&(st.hfil==='all'||o.status===st.hfil));
-  return `${OWNER_WA?`<a href="https://wa.me/${esc(OWNER_WA)}" target="_blank"><button class="s" style="width:100%">💬 Chat with owner</button></a>`:''}${chips([['all','All'],['pending','Pending'],['confirmed','Confirmed'],['rejected','Rejected']],st.hfil,'hfil')}${m.length?m.map(o=>ocard(o,0)).join(''):empty('No orders yet.')}`}
-function admin(){const o=st.orders,conf=o.filter(x=>x.status==='confirmed'),rev=conf.reduce((a,x)=>a+(Number(x.price)||0),0);
+
+function hist(){
+  const m=st.orders.filter(o=>o.buyer===st.u.uid&&(st.hfil==='all'||o.status===st.hfil));
+  return `${OWNER_WA?`<a href="https://wa.me/${esc(OWNER_WA)}" target="_blank"><button class="s" style="width:100%">💬 Chat with owner</button></a>`:''}${chips([['all','All'],['pending','Pending'],['confirmed','Confirmed'],['rejected','Rejected']],st.hfil,'hfil')}${m.length?m.map(o=>ocard(o,0)).join(''):empty('No orders yet.')}`;
+}
+
+function admin(){
+  const o=st.orders,conf=o.filter(x=>x.status==='confirmed'),rev=conf.reduce((a,x)=>a+(Number(x.price)||0),0);
   const head=`<div class="stats"><div class="card"><b>${o.filter(x=>x.status==='pending').length}</b><span class="mut">Pending</span></div><div class="card"><b>${conf.length}</b><span class="mut">Confirmed</span></div><div class="card"><b>${money(rev)}</b><span class="mut">Revenue</span></div><div class="card"><b>${live().length}</b><span class="mut">Live items</span></div></div>${chips([['ord','Orders'],['itm','Items'],['own','Owners'],['set','QR']],st.sub,'sub')}`;
   if(st.sub==='ord'){const l=o.filter(x=>st.ofil==='all'||x.status===st.ofil);return head+chips([['pending','Pending'],['confirmed','Confirmed'],['rejected','Rejected'],['all','All']],st.ofil,'ofil')+(l.length?l.map(x=>ocard(x,1)).join(''):empty('No orders.'))}
   if(st.sub==='set')return head+`<div class="card"><b>Payment QR</b>${st.qr?`<img class="qr" src="${img(st.qr)}">`:''}<input id="qf" type="file" accept="image/*"><button data-act="qr">Save QR</button></div>`;
@@ -152,11 +186,16 @@ function admin(){const o=st.orders,conf=o.filter(x=>x.status==='confirmed'),rev=
     <div class="row card" style="margin:8px 0"><span>${esc(OWNER_EMAIL)}</span><span class="tag">Main</span></div>
     ${st.owners.filter(e=>e!==lc(OWNER_EMAIL)).map(e=>`<div class="row card" style="margin:8px 0"><span style="word-break:break-all">${esc(e)}</span>${st.main?`<button class="r tg" data-act="delown" data-id="${esc(e)}">Remove</button>`:''}</div>`).join('')}
     ${st.main?`<input id="oe" type="email" placeholder="new.owner@gmail.com"><button data-act="addown">Add owner</button>`:'<p class="mut">Only the main owner can edit this list.</p>'}</div>`;
-  return head+`<div class="card"><b>New item</b><select id="ty"><option>FF</option><option>Gmail</option><option>APK</option></select><input id="ti" placeholder="Title"><input id="pr" placeholder="Price ₹" inputmode="numeric"><textarea id="de" rows="2" placeholder="Description (optional)"></textarea><input id="ph" type="file" accept="image/*"><input id="se" placeholder="Secret data (APK: download link) - required, sent after confirmation"><button data-act="add">Upload</button></div>`+
-  st.items.map(i=>`<div class="card"><div class="row"><b>${esc(i.title)}</b><span class="b ${i.sold?'rejected':'confirmed'}">${i.sold?'Sold':'Live'}</span></div><div class="mut">${esc(i.type)} · ${money(i.price)}</div><div class="row" style="margin-top:8px"><button class="s tg" data-act="price" data-id="${i.id}">Price</button><button class="s tg" data-act="sec" data-id="${i.id}">Secret</button><button class="s tg" data-act="sold" data-id="${i.id}">${i.sold?'Make live':'Mark sold'}</button><button class="r tg" data-act="del" data-id="${i.id}">Delete</button></div></div>`).join('')}
-function buyModal(i){const dup=st.orders.find(o=>o.buyer===st.u.uid&&o.itemId===i.id&&o.status!=='rejected');
-  openModal(`<b>${esc(i.title)}</b> <span class="tag ${esc(i.type)}">${esc(i.type)}</span><img class="p big" src="${img(i.photo)}" alt=""><p>${esc(i.desc||'')}</p><h3 class="price">${money(i.price)}</h3>${dup?`<p class="mut">Your order for this item is ${LBL[dup.status]}. Check the Orders tab.</p>`:`<p class="mut">1) Pay ${money(i.price)} via QR &nbsp;2) Enter UTR &nbsp;3) Upload screenshot</p>${payBox()}${st.qr?`<button data-act="pay" data-id="${i.id}">Submit payment</button>`:''}`}`)}
-const newOrder=async(extra,shot)=>addDoc(collection(db,'orders'),{buyer:st.u.uid,name:st.u.displayName||'',email:st.u.email,utr:($('#utr')?.value||'').trim(),shot,status:'pending',ts:Date.now(),...extra});
+  return head+`<div class="card"><b>New item</b><select id="ty"><option>FF</option><option>Gmail</option><option>APK</option></select><input id="ti" placeholder="Title"><input id="pr" placeholder="Price ₹" inputmode="numeric"><textarea id="de" rows="2" placeholder="Description (optional)"></textarea><label class="mut" style="font-size:12px;margin-left:4px">Item Photo (Required):</label><input id="ph" type="file" accept="image/*"><input id="se" placeholder="Secret data (APK: download link) - required, sent after confirmation"><button data-act="add">Upload</button></div>`+
+  st.items.map(i=>`<div class="card"><div class="row"><b>${esc(i.title)}</b><span class="b ${i.sold?'rejected':'confirmed'}">${i.sold?'Sold':'Live'}</span></div><div class="mut">${esc(i.type)} · ${money(i.price)}</div><div class="row" style="margin-top:8px"><button class="s tg" data-act="price" data-id="${i.id}">Price</button><button class="s tg" data-act="sec" data-id="${i.id}">Secret</button><button class="s tg" data-act="sold" data-id="${i.id}">${i.sold?'Make live':'Mark sold'}</button><button class="r tg" data-act="del" data-id="${i.id}">Delete</button></div></div>`).join('');
+}
+
+function buyModal(i){
+  const dup=st.orders.find(o=>o.buyer===st.u.uid&&o.itemId===i.id&&o.status!=='rejected');
+  openModal(`<b>${esc(i.title)}</b> <span class="tag ${esc(i.type)}">${esc(i.type)}</span><img class="p big" src="${img(i.photo)}" alt=""><p>${esc(i.desc||'')}</p><h3 class="price">${money(i.price)}</h3>${dup?`<p class="mut">Your order for this item is ${LBL[dup.status]}. Check the Orders tab.</p>`:`<p class="mut">1) Pay ${money(i.price)} via QR &nbsp;2) Enter UTR &nbsp;3) Upload screenshot</p>${payBox()}${st.qr?`<button data-act="pay" data-id="${i.id}">Submit payment</button>`:''}`}`);
+}
+
+const newOrder=async(extra,shot)=>addDoc(collection(db,'orders'),{buyer:st.u.uid,name:st.u.displayName||'',email:st.u.email,utr:($('#utr')?.value||'').trim(),shot:shot||'',status:'pending',ts:Date.now(),...extra});
 const ref=(c,id)=>doc(db,c,id),ord=id=>st.orders.find(o=>o.id===id);
 
 async function confirmOrder(o){
@@ -170,40 +209,70 @@ async function confirmOrder(o){
   for(const x of st.orders.filter(x=>x.itemId===o.itemId&&x.id!==o.id&&x.status==='pending'))await updateDoc(ref('orders',x.id),{status:'rejected',note:'This item has been sold. Contact the owner for a refund.'});
   toast('Order confirmed ✅');
 }
+
 const saveOwners=l=>setDoc(ref('settings','owners'),{list:[...new Set(l.map(lc))]});
+
 function act(a,d,b){
   const S={tab:()=>{st.tab=d.id;render(true)},cat:()=>{st.cat=d.id;render(true)},sub:()=>{st.sub=d.id;render(true)},ofil:()=>{st.ofil=d.id;render(true)},hfil:()=>{st.hfil=d.id;render(true)},
     theme:()=>{th=th==='soft'?'glass':'soft';document.documentElement.dataset.th=th;try{localStorage.setItem('th',th)}catch(e){}
-      document.querySelector('meta[name=theme-color]').content=th==='soft'?'#e9e6f7':'#0d1b2a';render(true)},
+      const mt=document.querySelector('meta[name=theme-color]');if(mt)mt.content=th==='soft'?'#e9e6f7':'#0d1b2a';render(true)},
     login,out:()=>signOut(auth),closem:closeModal,buy:()=>{const i=st.items.find(x=>x.id===d.id);i&&buyModal(i)},
     zoom:()=>{const o=ord(d.id);o&&openModal(`<img class="zoom" src="${img(o.shot)}">`)},
-    copy:()=>navigator.clipboard.writeText(ord(d.id).delivery).then(()=>toast('Copied'),()=>toast('Copy failed',1))};
+    copy:()=>navigator.clipboard.writeText(ord(d.id)?.delivery||'').then(()=>toast('Copied'),()=>toast('Copy failed',1))};
   if(S[a])return S[a]();
+
   const R={
-    pay:async()=>{const i=st.items.find(x=>x.id===d.id);if(!i||i.sold)throw new Error('This item is no longer available');
-      await newOrder({kind:'item',itemId:i.id,title:i.title,price:i.price},await shrink($('#sf').files[0]));closeModal();st.tab='my';render(true);toast('Order submitted ✅')},
-    cpay:async()=>{const r=$('#cr').value.trim(),p=Number($('#cb').value);if(r.length<5||!(p>0))throw new Error('Enter your request and a valid budget');
-      await newOrder({kind:'custom',title:'Custom: '+r.slice(0,40),request:r,contact:$('#cc').value.trim(),price:p},await shrink($('#sf').files[0]));st.tab='my';render(true);toast('Custom request sent ✅')},
+    pay:async()=>{
+      const i=st.items.find(x=>x.id===d.id);if(!i||i.sold)throw new Error('This item is no longer available');
+      const sf=$('#sf')?.files?.[0];
+      const utr=($('#utr')?.value||'').trim();
+      if(!utr)throw new Error('Please enter transaction UTR number');
+      if(!sf)throw new Error('Please upload payment screenshot');
+      const shot=await shrink(sf,450);
+      await newOrder({kind:'item',itemId:i.id,title:i.title,price:i.price},shot);
+      closeModal();st.tab='my';render(true);toast('Order submitted ✅');
+    },
+    cpay:async()=>{
+      const r=$('#cr')?.value.trim()\vert{}\vert{}'',p=Number($('#cb')?.value);
+      if(r.length<5||!(p>0))throw new Error('Enter your request and a valid budget');
+      const sf=$('#sf')?.files?.[0];
+      const utr=($('#utr')?.value||'').trim();
+      if(!utr)throw new Error('Please enter transaction UTR number');
+      if(!sf)throw new Error('Please upload payment screenshot');
+      const shot=await shrink(sf,450);
+      await newOrder({kind:'custom',title:'Custom: '+r.slice(0,40),request:r,contact:($('#cc')?.value||'').trim(),price:p},shot);
+      st.tab='my';render(true);toast('Custom request sent ✅');
+    },
     ok:()=>confirmOrder(ord(d.id)),
     rej:async()=>{const n=prompt('Reason for rejection (shown to buyer):');if(n===null)throw'x';await updateDoc(ref('orders',d.id),{status:'rejected',note:n})},
-    fix:async()=>{const o=ord(d.id),v=prompt('Data shown to the buyer:',o.delivery||'');if(v===null)throw'x';await updateDoc(ref('orders',d.id),{delivery:v});if(o.kind!=='custom'){await setDoc(ref('secrets',o.itemId),{v});await updateDoc(ref('items',o.itemId),{sold:true}).catch(()=>{})}},
-    qr:async()=>{await setDoc(ref('settings','qr'),{img:await shrink($('#qf').files[0],600)});toast('QR saved')},
-    addown:async()=>{const e=lc($('#oe').value);if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))throw new Error('Enter a valid email');
+    fix:async()=>{const o=ord(d.id),v=prompt('Data shown to the buyer:',o?.delivery||'');if(v===null)throw'x';await updateDoc(ref('orders',d.id),{delivery:v});if(o?.kind!=='custom'){await setDoc(ref('secrets',o.itemId),{v});await updateDoc(ref('items',o.itemId),{sold:true}).catch(()=>{})}},
+    qr:async()=>{
+      const qf=$('#qf')?.files?.[0];if(!qf)throw new Error('Please choose a QR image');
+      await setDoc(ref('settings','qr'),{img:await shrink(qf,450)});toast('QR saved');
+    },
+    addown:async()=>{const e=lc($('#oe')?.value);if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))throw new Error('Enter a valid email');
       if(e===lc(OWNER_EMAIL)||st.owners.includes(e))throw new Error('Already an owner');await saveOwners([...st.owners,e]);toast('Owner added 👑')},
     delown:async()=>{if(!confirm('Remove '+d.id+' as owner?'))throw'x';await saveOwners(st.owners.filter(e=>e!==d.id));toast('Owner removed')},
-    add:async()=>{const t=$('#ti').value.trim(),p=Number($('#pr').value),sec=$('#se').value.trim();if(!t||!(p>0))throw new Error('Enter a title and a valid price');if(!sec)throw new Error('Secret data is required');
-      const photo=await shrink($('#ph').files[0],700);
-      const r=await addDoc(collection(db,'items'),{type:$('#ty').value,title:t,price:p,desc:$('#de').value.trim(),photo,sold:false,ts:Date.now()});
+    add:async()=>{
+      const t=$('#ti')?.value.trim(),p=Number($('#pr')?.value),sec=$('#se')?.value.trim();
+      if(!t||!(p>0))throw new Error('Enter a title and a valid price');
+      if(!sec)throw new Error('Secret data is required');
+      const ph=$('#ph')?.files?.[0];
+      if(!ph)throw new Error('Please choose an item photo');
+      const photo=await shrink(ph,450);
+      const r=await addDoc(collection(db,'items'),{type:$('#ty').value,title:t,price:p,desc:($('#de')?.value||'').trim(),photo,sold:false,ts:Date.now()});
       try{await setDoc(ref('secrets',r.id),{v:sec})}catch(e){await deleteDoc(ref('items',r.id));throw e}
-      ['ti','pr','de','se','ph'].forEach(k=>$('#'+k).value='');toast('Item uploaded ✅')},
+      ['ti','pr','de','se','ph'].forEach(k=>{if($('#'+k))$('#'+k).value=''});toast('Item uploaded ✅');
+    },
     price:async()=>{const p=Number(prompt('New price ₹:'));if(!(p>0))throw'x';await updateDoc(ref('items',d.id),{price:p})},
     sec:async()=>{const v=prompt('New secret data:');if(!v)throw'x';await setDoc(ref('secrets',d.id),{v});toast('Secret saved')},
-    sold:()=>updateDoc(ref('items',d.id),{sold:!st.items.find(i=>i.id===d.id).sold}),
-    del:async()=>{if(!confirm('Delete this item?'))throw'x';await deleteDoc(ref('items',d.id));await deleteDoc(ref('secrets',d.id))}};
+    sold:()=>updateDoc(ref('items',d.id),{sold:!st.items.find(i=>i.id===d.id)?.sold}),
+    del:async()=>{if(!confirm('Delete this item?'))throw'x';await deleteDoc(ref('items',d.id));await deleteDoc(ref('secrets',d.id)).catch(()=>{})}};
   if(R[a])run(b,R[a]);
 }
+
 document.addEventListener('click',e=>{if(e.target.classList.contains('modal'))return closeModal();const b=e.target.closest('[data-act]');if(b)act(b.dataset.act,b.dataset,b)});
-document.addEventListener('input',e=>{if(e.target.id==='q'){st.q=e.target.value;$('#grid').innerHTML=grid()}});
+document.addEventListener('input',e=>{if(e.target.id==='q'){st.q=e.target.value;const g=$('#grid');if(g)g.innerHTML=grid()}});
 document.addEventListener('focusout',()=>setTimeout(()=>{if(st.dirty&&!typing())render(true)},250));
 document.addEventListener('pointermove',e=>{const c=e.target.closest('.grid .card');if(!c||e.pointerType==='touch')return;const r=c.getBoundingClientRect();
   c.style.setProperty('--ry',((e.clientX-r.left)/r.width-.5)*14+'deg');c.style.setProperty('--rx',(.5-(e.clientY-r.top)/r.height)*14+'deg')});
