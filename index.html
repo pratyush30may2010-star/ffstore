@@ -1,96 +1,170 @@
 <!DOCTYPE html>
 <html lang="hi"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0d1a">
 <title>FF & Gmail Store</title>
+<link rel="manifest" href="manifest.json"><script>if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js')</script>
 <style>
-:root{--bg:#0e1020;--card:#191c33d9;--tx:#f4f4fa;--mut:#a6a8c4;--ac:#ff6a1a;--ok:#22c55e}
-*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;color:var(--tx);background:var(--bg);min-height:100vh;overflow-x:hidden}
-.bg{position:fixed;inset:0;opacity:.16;pointer-events:none;display:flex;flex-direction:column;justify-content:space-around;font-weight:900}
-.bg span{font-size:26vw;line-height:1;white-space:nowrap;transform:rotate(-8deg)}.bg .a{color:var(--ac)}.bg .b{color:#ea4335;margin-left:10vw}
-main{position:relative;max-width:640px;margin:0 auto;padding:14px}
-h1{font-size:20px;margin:4px 0 10px}.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
-.tabs{display:flex;gap:6px;margin:10px 0}
-button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:var(--ac);color:#fff;font-weight:600}
-button.t{background:var(--card);color:var(--tx)}button.t.on{background:var(--ac)}button.g{background:var(--ok)}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.card{background:var(--card);border-radius:14px;padding:10px;margin-bottom:8px}
-img.p{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px}
-.tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--ac)}.tag.gm{background:#ea4335}
-.mut{color:var(--mut);font-size:13px}
-input,select{width:100%;padding:10px;border-radius:10px;border:1px solid #8886;background:var(--card);color:var(--tx);font:inherit;margin:4px 0}
-.modal{position:fixed;inset:0;background:#000a;display:flex;align-items:flex-end;justify-content:center}
-.sheet{background:var(--bg);width:100%;max-width:640px;border-radius:18px 18px 0 0;padding:16px;max-height:90vh;overflow:auto}
-.qr{width:220px;max-width:70%;display:block;margin:10px auto;background:#fff;border-radius:10px}
-pre{white-space:pre-wrap;word-break:break-all;background:#0004;padding:10px;border-radius:10px}
-.shot{max-width:100%;max-height:260px;border-radius:10px}
+:root{--bg:#0b0d1a;--card:#161a30;--bd:#ffffff18;--tx:#f3f4fb;--mut:#9ea2c4;--ac:#ff6a1a;--ok:#16a34a;--rd:#dc2626}
+@media(prefers-color-scheme:light){:root{--bg:#eef0fb;--card:#fff;--bd:#0000001a;--tx:#14162b;--mut:#5b5f80}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font:15px/1.4 system-ui,sans-serif;color:var(--tx);background:var(--bg);padding-bottom:calc(78px + env(safe-area-inset-bottom))}
+.bg{position:fixed;inset:0;opacity:.07;pointer-events:none;display:flex;flex-direction:column;justify-content:space-around;font-weight:900;overflow:hidden}
+.bg span{font-size:28vw;line-height:1;white-space:nowrap;transform:rotate(-8deg)}.bg .a{color:var(--ac)}.bg .b{color:#ea4335;margin-left:12vw}
+header{position:sticky;top:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;background:var(--bg);border-bottom:1px solid var(--bd)}
+h1{font-size:18px;margin:0}.me{display:flex;align-items:center;gap:8px}
+.av{width:32px;height:32px;border-radius:50%;background:var(--ac);color:#fff;display:grid;place-items:center;font-weight:700}
+main{position:relative;max-width:680px;margin:0 auto;padding:12px 14px}
+button{font:inherit;border:0;border-radius:12px;padding:10px 14px;background:var(--ac);color:#fff;font-weight:600;cursor:pointer}
+button:disabled{opacity:.6}button.s{background:var(--card);color:var(--tx);border:1px solid var(--bd)}button.g{background:var(--ok)}button.r{background:var(--rd)}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.chips{display:flex;gap:6px;overflow-x:auto;margin:8px 0;padding-bottom:2px}
+.chips button{padding:7px 13px;border-radius:99px;white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:12px;margin-bottom:10px}
+.grid .card{margin:0;padding:8px;cursor:pointer}
+img.p{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;background:#0003;display:block}
+.tag{font-size:11px;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--ac);color:#fff}.tag.Gmail{background:#ea4335}
+.mut{color:var(--mut);font-size:13px}.c{text-align:center}.price{font-weight:800;color:var(--ac)}
+input,select,textarea{width:100%;padding:11px;border-radius:12px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit;margin:4px 0}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom)}
+.nav button{flex:1;background:none;color:var(--mut);border-radius:0;padding:8px 2px;font-size:11px;position:relative;display:flex;flex-direction:column;align-items:center}
+.nav button span{font-size:20px}.nav button.on{color:var(--ac)}.nav i{position:absolute;top:2px;right:22%;background:var(--rd);color:#fff;font-style:normal;font-size:10px;padding:1px 6px;border-radius:99px}
+.modal{position:fixed;inset:0;z-index:9;background:#000b;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:680px;border-radius:20px 20px 0 0;padding:16px;max-height:92vh;overflow:auto;position:relative}
+.x{position:absolute;top:10px;right:10px;padding:6px 11px}
+.qr{width:230px;max-width:70%;display:block;margin:10px auto;background:#fff;border-radius:12px;padding:6px}
+.big{max-height:260px;margin:8px 0}.zoom{width:100%;border-radius:12px}
+pre{white-space:pre-wrap;word-break:break-all;background:#0003;padding:10px;border-radius:10px;margin:8px 0}
+.shot{max-width:100%;max-height:200px;border-radius:10px;display:block;margin:8px 0;cursor:zoom-in}
+.b{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px}.b.pending{background:#f59e0b33;color:#f59e0b}.b.confirmed{background:#16a34a33;color:#22c55e}.b.rejected{background:#dc262633;color:#ef4444}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}.stats .card{margin:0;text-align:center}.stats b{font-size:20px;display:block}
+.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:20;background:#16a34a;color:#fff;padding:10px 16px;border-radius:12px;max-width:90%}.toast.bad{background:var(--rd)}
+.sk{height:150px;border-radius:16px;background:var(--card);animation:p 1.2s infinite}@keyframes p{50%{opacity:.4}}
 </style></head><body>
 <div class="bg"><span class="a">FF</span><span class="b">Gmail</span><span class="a">FF</span></div>
-<main>
-<div class="top"><h1>🔥 FF & ✉️ Gmail Store</h1><div id="auth"></div></div>
-<div class="tabs" id="tabs"></div><div id="view"></div>
-</main><div id="modal"></div>
+<header><h1>🔥 FF & ✉️ Gmail Store</h1><div class="me" id="me"></div></header>
+<main id="app"></main><div class="nav" id="nav"></div><div id="modal"></div>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import{getFirestore,collection,doc,addDoc,setDoc,getDoc,updateDoc,deleteDoc,onSnapshot,query,where}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-/* ====== SETUP: yahan apni values daalo ====== */
 const firebaseConfig={apiKey:"AIzaSyBRtbN4UfJfwUPT1tSJoVsQuoqW5f9-3p8",authDomain:"ffstore-84973.firebaseapp.com",projectId:"ffstore-84973",appId:"1:457072994201:web:e0dc375b2951ac8ce31508"};
-const OWNER_EMAIL="studentpratyush2010@gmail.com";   // sirf ye email Owner Panel dekhega
-/* ============================================ */
+const OWNER_EMAIL="studentpratyush2010@gmail.com";
+const OWNER_WA=""; // optional: "919876543210" (country code ke saath) - buyer ko "Owner se baat karo" button dikhega
 
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let u=null,owner=false,tab='shop',items=[],orders=[],qr='',unsubs=[];
-window.S={};
+const img=s=>/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(s||'')?s:'';
+const money=n=>'₹'+(Number(n)||0).toLocaleString('en-IN');
+const when=t=>new Date(t).toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
+const LBL={pending:'⏳ Pending',confirmed:'✅ Confirmed',rejected:'❌ Rejected'};
+const st={u:null,owner:false,ready:false,tab:'shop',sub:'ord',cat:'All',q:'',ofil:'pending',hfil:'all',items:[],orders:[],qr:'',dirty:0};
+let unsubs=[];
 
-// image ko chhota karke text (base64) me badlo, taaki Storage ki zarurat na pade
-const shrink=f=>new Promise((res,rej)=>{if(!f)return rej();const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const k=Math.min(1,700/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.6))};i.src=r.result};r.readAsDataURL(f)});
+function toast(m,bad){const t=document.createElement('div');t.className='toast'+(bad?' bad':'');t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
+const run=async(b,fn)=>{if(b.disabled)return;b.disabled=true;const o=b.textContent;b.textContent='⏳ ...';try{await fn()}catch(e){if(e!=='x')toast(e.message||String(e),1)}finally{if(b.isConnected){b.disabled=false;b.textContent=o}}};
+const shrink=(f,max=800)=>new Promise((ok,no)=>{if(!f)return no(new Error('Photo / screenshot chuno'));if(!f.type.startsWith('image/'))return no(new Error('Sirf image chuno'));const r=new FileReader();r.onerror=()=>no(new Error('File padh nahi paya'));r.onload=()=>{const i=new Image();i.onerror=()=>no(new Error('Image kharab hai'));i.onload=()=>{const k=Math.min(1,max/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.round(i.width*k);c.height=Math.round(i.height*k);c.getContext('2d').drawImage(i,0,0,c.width,c.height);ok(c.toDataURL('image/jpeg',.65))};i.src=r.result};r.readAsDataURL(f)});
+const openModal=h=>{$('#modal').innerHTML=`<div class="modal"><div class="sheet"><button class="s x" data-act="closem">✕</button>${h}</div></div>`};
+const closeModal=()=>$('#modal').innerHTML='';
+const typing=()=>{const a=document.activeElement;return a&&['INPUT','TEXTAREA','SELECT'].includes(a.tagName)&&a.id!=='q'};
 
-onAuthStateChanged(auth,async x=>{
-  unsubs.forEach(f=>f());unsubs=[];u=x;owner=!!x&&x.email===OWNER_EMAIL;
-  if(x){await setDoc(doc(db,'users',x.uid),{name:x.displayName||'',email:x.email,last:Date.now()},{merge:true});
-    unsubs.push(onSnapshot(collection(db,'items'),s=>{items=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
-    const oq=owner?collection(db,'orders'):query(collection(db,'orders'),where('buyer','==',x.uid));
-    unsubs.push(onSnapshot(oq,s=>{orders=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
-    unsubs.push(onSnapshot(doc(db,'settings','qr'),s=>{qr=(s.data()||{}).img||''}));}
-  render();
+onAuthStateChanged(auth,x=>{
+  unsubs.forEach(f=>f());unsubs=[];st.u=x;st.owner=!!x&&x.email===OWNER_EMAIL;st.ready=true;
+  if(x){setDoc(doc(db,'users',x.uid),{name:x.displayName||'',email:x.email,last:Date.now()},{merge:true}).catch(()=>{});
+    const er=e=>toast('Data load error: '+(e.code||e.message),1);
+    unsubs.push(onSnapshot(collection(db,'items'),s=>{st.items=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.ts||0)-(a.ts||0));render()},er));
+    const oq=st.owner?collection(db,'orders'):query(collection(db,'orders'),where('buyer','==',x.uid));
+    unsubs.push(onSnapshot(oq,s=>{st.orders=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.ts||0)-(a.ts||0));render()},er));
+    unsubs.push(onSnapshot(doc(db,'settings','qr'),s=>{st.qr=(s.data()||{}).img||'';render()},er));
+  }else{st.items=[];st.orders=[];st.qr=''}
+  render(true);
 });
+const login=async()=>{const p=new GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});
+  try{await signInWithPopup(auth,p)}catch(e){if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment'].includes(e.code))return signInWithRedirect(auth,p);
+    if(!['auth/popup-closed-by-user','auth/cancelled-popup-request'].includes(e.code))toast(e.message,1)}};
 
-function render(){
-  $('#auth').innerHTML=u?`<span class="mut">${esc(u.displayName||u.email)}</span> <button class="t" onclick="S.out()">Logout</button>`:'';
-  if(!u){$('#tabs').innerHTML='';$('#view').innerHTML='<div class="card"><p>Order karne aur history dekhne ke liye Gmail se login karo.</p><button onclick="S.login()">Google se Login</button></div>';return}
-  const t=[['shop','Shop'],['my','Order History']].concat(owner?[['adm','Owner Panel']]:[]);
-  $('#tabs').innerHTML=t.map(x=>`<button class="t ${tab==x[0]?'on':''}" onclick="S.tab('${x[0]}')">${x[1]}</button>`).join('');
-  const v=$('#view');
-  const live=items.filter(i=>!i.sold);
-  if(tab=='shop')v.innerHTML=live.length?`<div class="grid">${live.map(i=>`<div class="card" onclick="S.buy('${i.id}')"><img class="p" src="${i.photo}"><div style="margin-top:6px"><span class="tag ${i.type=='Gmail'?'gm':''}">${esc(i.type)}</span></div><b>${esc(i.title)}</b><div class="mut">₹${esc(i.price)}</div></div>`).join('')}</div>`:'<div class="card mut">Abhi koi item nahi hai.</div>';
-  if(tab=='my'){const m=orders.filter(o=>o.buyer==u.uid).sort((a,b)=>b.ts-a.ts);
-    v.innerHTML=m.length?m.map(o=>`<div class="card"><b>${esc(o.title)}</b> — ₹${esc(o.price)}<div class="mut">${o.status=='confirmed'?'✅ Confirmed':'⏳ Pending'} · ${new Date(o.ts).toLocaleString()}</div>${o.status=='confirmed'?`<pre>${esc(o.delivery)}</pre>`:''}</div>`).join(''):'<div class="card mut">Koi order nahi.</div>'}
-  if(tab=='adm'&&owner){const p=orders.filter(o=>o.status=='pending');
-    v.innerHTML=`<div class="card"><b>Naya item</b><select id="ty"><option>FF</option><option>Gmail</option></select><input id="ti" placeholder="Title"><input id="pr" placeholder="Price ₹" inputmode="numeric"><input id="ph" type="file" accept="image/*"><input id="se" placeholder="Secret data (confirm ke baad milega)"><button onclick="S.add()">Upload</button></div>
-    <div class="card"><b>Payment QR</b><input id="qf" type="file" accept="image/*"><button onclick="S.setQr()">QR save</button></div>
-    <b>Pending orders (${p.length})</b>${p.map(o=>`<div class="card"><b>${esc(o.title)}</b> — ₹${esc(o.price)}<div class="mut">${esc(o.name)} · ${esc(o.email)}</div><img class="shot" src="${o.shot}"><br><button class="g" onclick="S.ok('${o.id}')">Confirm ✅</button></div>`).join('')}
-    <b>Confirmed orders</b>${orders.filter(o=>o.status=='confirmed').map(o=>`<div class="card"><b>${esc(o.title)}</b> — ${esc(o.email)}<pre>${esc(o.delivery||'(khali)')}</pre><button onclick="S.fix('${o.id}')">Delivery data badlo</button></div>`).join('')}
-    <b>Mere items</b>${items.map(i=>`<div class="card"><b>${esc(i.title)}</b> ₹${esc(i.price)} ${i.sold?'· 🔴 Sold':'· 🟢 Live'}<br><button onclick="S.sec('${i.id}')">Secret badlo</button> <button style="background:#dc2626" onclick="S.del('${i.id}')">Delete</button></div>`).join('')}`}
+const chips=(list,cur,a)=>`<div class="chips">${list.map(([k,l])=>`<button class="${cur===k?'':'s'}" data-act="${a}" data-id="${k}">${l}</button>`).join('')}</div>`;
+const empty=m=>`<div class="card mut c">${m}</div>`;
+
+function render(force){
+  if(!force&&typing()){st.dirty=1;return}
+  st.dirty=0;const{u,owner,ready,tab}=st,A=$('#app');
+  $('#me').innerHTML=u?`<div class="av">${esc((u.displayName||u.email||'?')[0].toUpperCase())}</div><button class="s" data-act="out">Logout</button>`:'';
+  if(!ready){A.innerHTML='<div class="grid"><div class="sk"></div><div class="sk"></div></div>';$('#nav').innerHTML='';return}
+  if(!u){$('#nav').innerHTML='';A.innerHTML=`<div class="card c" style="margin-top:30px"><h2>Welcome 👋</h2><p class="mut">FF aur Gmail IDs kharidne, order history dekhne aur apne type ka order dene ke liye Google se login karo.</p><button data-act="login">Google se Login</button></div>`;return}
+  const pc=st.orders.filter(o=>o.status==='pending').length;
+  const tabs=[['shop','🛍️','Shop'],['cust','✍️','Custom'],['my','📦','History']];if(owner)tabs.push(['adm','⚙️','Owner']);
+  $('#nav').innerHTML=tabs.map(([k,ic,l])=>`<button class="${tab===k?'on':''}" data-act="tab" data-id="${k}"><span>${ic}</span>${l}${k==='adm'&&pc?`<i>${pc}</i>`:''}</button>`).join('');
+  A.innerHTML=tab==='shop'?shop():tab==='cust'?cust():tab==='my'?hist():owner?admin():'';
 }
-S.login=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>alert(e.message));
-S.out=()=>signOut(auth);S.tab=t=>{tab=t;render()};
-S.add=async()=>{try{const photo=await shrink($('#ph').files[0]);const r=await addDoc(collection(db,'items'),{type:$('#ty').value,title:$('#ti').value,price:$('#pr').value,photo,ts:Date.now()});
-  await setDoc(doc(db,'secrets',r.id),{v:$('#se').value});alert('Upload ho gaya')}catch(e){alert('Photo chuno / error')}};
-S.setQr=async()=>{try{await setDoc(doc(db,'settings','qr'),{img:await shrink($('#qf').files[0])});alert('QR save')}catch(e){alert('QR image chuno')}};
-S.buy=id=>{const i=items.find(x=>x.id==id);
-  $('#modal').innerHTML=`<div class="modal" onclick="if(event.target==this)this.remove()"><div class="sheet"><b>${esc(i.title)}</b> — ₹${esc(i.price)}<p class="mut">QR scan karke pay karo, phir screenshot upload karo.</p>${qr?`<img class="qr" src="${qr}">`:'<p class="mut">QR abhi set nahi hai.</p>'}<input id="sf" type="file" accept="image/*"><button onclick="S.shot('${id}')">Screenshot bhejo</button></div></div>`};
-S.shot=async id=>{const i=items.find(x=>x.id==id);try{const shot=await shrink($('#sf').files[0]);
-  await setDoc(doc(db,'orders',u.uid+'_'+id),{itemId:id,buyer:u.uid,name:u.displayName||'',email:u.email,title:i.title,price:i.price,shot,status:'pending',ts:Date.now()});
-  $('#modal').innerHTML='';tab='my';render()}catch(e){alert('Screenshot chuno / error')}};
-S.ok=async oid=>{const o=orders.find(x=>x.id==oid);try{const r=await getDoc(doc(db,'secrets',o.itemId));let v=(r.data()||{}).v||'';
-  if(!v){v=prompt('Is item ka secret data khali hai. Buyer ko jo dena hai wo likho:')||'';if(!v)return;await setDoc(doc(db,'secrets',o.itemId),{v})}
-  await updateDoc(doc(db,'orders',oid),{status:'confirmed',delivery:v});
-  await updateDoc(doc(db,'items',o.itemId),{sold:true})}catch(e){alert('Confirm fail: '+e.message)}};
-S.fix=async oid=>{const o=orders.find(x=>x.id==oid);const v=prompt('Buyer ko dikhne wala data likho:',o.delivery||'');if(v===null)return;
-  try{await updateDoc(doc(db,'orders',oid),{delivery:v});await setDoc(doc(db,'secrets',o.itemId),{v});await updateDoc(doc(db,'items',o.itemId),{sold:true})}catch(e){alert(e.message)}};
-S.sec=async id=>{const v=prompt('Naya secret data:');if(!v)return;try{await setDoc(doc(db,'secrets',id),{v});alert('Save ho gaya')}catch(e){alert(e.message)}};
-S.del=async id=>{if(!confirm('Ye item delete karna hai?'))return;try{await deleteDoc(doc(db,'items',id));await deleteDoc(doc(db,'secrets',id))}catch(e){alert(e.message)}};
+const live=()=>st.items.filter(i=>!i.sold);
+function grid(){const q=st.q.toLowerCase(),l=live().filter(i=>(st.cat==='All'||i.type===st.cat)&&(!q||(i.title+' '+(i.desc||'')).toLowerCase().includes(q)));
+  return l.length?l.map(i=>`<div class="card" data-act="buy" data-id="${i.id}"><img class="p" src="${img(i.photo)}" alt=""><div style="margin:6px 0 2px"><span class="tag ${esc(i.type)}">${esc(i.type)}</span></div><b>${esc(i.title)}</b><div class="price">${money(i.price)}</div></div>`).join(''):empty('Koi item nahi mila.')}
+const shop=()=>`<input id="q" placeholder="🔍 Search karo" value="${esc(st.q)}">${chips([['All','Sab'],['FF','FF'],['Gmail','Gmail']],st.cat,'cat')}<div class="grid" id="grid">${grid()}</div>`;
+const cust=()=>`<div class="card"><b>✍️ Apne type se order do</b><p class="mut">Jo chahiye likho (FF level, skins, Gmail age...). Budget ka payment karke screenshot do. Owner dekh kar confirm ya reject karega.</p><textarea id="cr" rows="4" placeholder="Aapko kya chahiye?"></textarea><input id="cb" placeholder="Budget ₹" inputmode="numeric"><input id="cc" placeholder="Contact: WhatsApp / Telegram (optional)">${payBox()}<button data-act="cpay">Order bhejo</button></div>`;
+const payBox=()=>st.qr?`<img class="qr" src="${img(st.qr)}"><input id="utr" placeholder="UTR / Transaction ID"><input id="sf" type="file" accept="image/*">`:'<p class="mut">Owner ne abhi QR set nahi kiya.</p>';
+const ocard=(o,own)=>`<div class="card"><div class="row"><b>${esc(o.title)}</b><span class="b ${o.status}">${LBL[o.status]||''}</span></div><div class="mut">${money(o.price)} · ${when(o.ts)}</div>
+${own?`<div class="mut">${esc(o.name)} · ${esc(o.email)}</div>`:''}${o.request?`<div>📝 ${esc(o.request)}</div>`:''}${own&&o.contact?`<div class="mut">📞 ${esc(o.contact)}</div>`:''}${o.utr?`<div class="mut">UTR: ${esc(o.utr)}</div>`:''}
+${own&&img(o.shot)?`<img class="shot" src="${img(o.shot)}" data-act="zoom" data-id="${o.id}">`:''}${o.status==='rejected'&&o.note?`<div class="mut">${esc(o.note)}</div>`:''}
+${o.status==='confirmed'&&o.delivery?`<pre>${esc(o.delivery)}</pre><button class="s" data-act="copy" data-id="${o.id}">📋 Copy</button>`:''}
+${own&&o.status==='pending'?`<div class="row"><button class="g" data-act="ok" data-id="${o.id}">Confirm ✅</button><button class="r" data-act="rej" data-id="${o.id}">Reject</button></div>`:''}
+${own&&o.status==='confirmed'?`<button class="s" data-act="fix" data-id="${o.id}">Delivery badlo</button>`:''}</div>`;
+function hist(){const m=st.orders.filter(o=>o.buyer===st.u.uid&&(st.hfil==='all'||o.status===st.hfil));
+  return`${OWNER_WA?`<a href="https://wa.me/${esc(OWNER_WA)}" target="_blank"><button class="s" style="width:100%">💬 Owner se baat karo</button></a>`:''}${chips([['all','Sab'],['pending','Pending'],['confirmed','Confirmed'],['rejected','Rejected']],st.hfil,'hfil')}${m.length?m.map(o=>ocard(o,0)).join(''):empty('Koi order nahi.')}`}
+function admin(){const o=st.orders,conf=o.filter(x=>x.status==='confirmed'),rev=conf.reduce((a,x)=>a+(Number(x.price)||0),0);
+  const head=`<div class="stats"><div class="card"><b>${o.filter(x=>x.status==='pending').length}</b><span class="mut">Pending</span></div><div class="card"><b>${conf.length}</b><span class="mut">Confirmed</span></div><div class="card"><b>${money(rev)}</b><span class="mut">Kamai</span></div><div class="card"><b>${live().length}</b><span class="mut">Live items</span></div></div>${chips([['ord','Orders'],['itm','Items'],['set','QR']],st.sub,'sub')}`;
+  if(st.sub==='ord'){const l=o.filter(x=>st.ofil==='all'||x.status===st.ofil);return head+chips([['pending','Pending'],['confirmed','Confirmed'],['rejected','Rejected'],['all','Sab']],st.ofil,'ofil')+(l.length?l.map(x=>ocard(x,1)).join(''):empty('Koi order nahi.'))}
+  if(st.sub==='set')return head+`<div class="card"><b>Payment QR</b>${st.qr?`<img class="qr" src="${img(st.qr)}">`:''}<input id="qf" type="file" accept="image/*"><button data-act="qr">QR save</button></div>`;
+  return head+`<div class="card"><b>Naya item</b><select id="ty"><option>FF</option><option>Gmail</option></select><input id="ti" placeholder="Title"><input id="pr" placeholder="Price ₹" inputmode="numeric"><textarea id="de" rows="2" placeholder="Description (optional)"></textarea><input id="ph" type="file" accept="image/*"><input id="se" placeholder="Secret data (zaroori, confirm ke baad buyer ko milega)"><button data-act="add">Upload</button></div>`+
+  st.items.map(i=>`<div class="card"><div class="row"><b>${esc(i.title)}</b><span class="b ${i.sold?'rejected':'confirmed'}">${i.sold?'Sold':'Live'}</span></div><div class="mut">${esc(i.type)} · ${money(i.price)}</div><div class="row" style="margin-top:6px"><button class="s" data-act="price" data-id="${i.id}">Price</button><button class="s" data-act="sec" data-id="${i.id}">Secret</button><button class="s" data-act="sold" data-id="${i.id}">${i.sold?'Live karo':'Sold karo'}</button><button class="r" data-act="del" data-id="${i.id}">Delete</button></div></div>`).join('')}
+function buyModal(i){const dup=st.orders.find(o=>o.buyer===st.u.uid&&o.itemId===i.id&&o.status!=='rejected');
+  openModal(`<b>${esc(i.title)}</b> <span class="tag ${esc(i.type)}">${esc(i.type)}</span><img class="p big" src="${img(i.photo)}" alt=""><p>${esc(i.desc||'')}</p><h3 class="price">${money(i.price)}</h3>${dup?`<p class="mut">Is item ka aapka order ${LBL[dup.status]} hai. History me dekho.</p>`:`<p class="mut">1) QR se ${money(i.price)} pay karo  2) UTR likho  3) screenshot do</p>${payBox()}${st.qr?`<button data-act="pay" data-id="${i.id}">Payment bhej do</button>`:''}`}`)}
+const newOrder=async(extra,shot)=>addDoc(collection(db,'orders'),{buyer:st.u.uid,name:st.u.displayName||'',email:st.u.email,utr:($('#utr')?.value||'').trim(),shot,status:'pending',ts:Date.now(),...extra});
+const ref=(c,id)=>doc(db,c,id),ord=id=>st.orders.find(o=>o.id===id);
+
+async function confirmOrder(o){
+  if(!confirm('Payment check kar liya? Confirm karein?'))throw'x';
+  if(o.kind==='custom'){const d=prompt('Buyer ko jo dena hai (ya reply) wo likho:')||'';if(!d)throw'x';return updateDoc(ref('orders',o.id),{status:'confirmed',delivery:d})}
+  const it=st.items.find(i=>i.id===o.itemId);if(!it)throw new Error('Item delete ho chuka hai');
+  if(it.sold&&!confirm('Ye item pehle hi sold hai. Phir bhi confirm?'))throw'x';
+  let v=((await getDoc(ref('secrets',o.itemId))).data()||{}).v||'';
+  if(!v){v=prompt('Secret data khali hai. Buyer ko jo dena hai likho:')||'';if(!v)throw'x';await setDoc(ref('secrets',o.itemId),{v})}
+  await updateDoc(ref('orders',o.id),{status:'confirmed',delivery:v});await updateDoc(ref('items',o.itemId),{sold:true});
+  for(const x of st.orders.filter(x=>x.itemId===o.itemId&&x.id!==o.id&&x.status==='pending'))await updateDoc(ref('orders',x.id),{status:'rejected',note:'Item sold ho gaya. Refund ke liye owner se contact karo.'});
+  toast('Confirm ho gaya ✅');
+}
+function act(a,d,b){
+  const S={tab:()=>{st.tab=d.id;render(true)},cat:()=>{st.cat=d.id;render(true)},sub:()=>{st.sub=d.id;render(true)},ofil:()=>{st.ofil=d.id;render(true)},hfil:()=>{st.hfil=d.id;render(true)},
+    login,out:()=>signOut(auth),closem:closeModal,buy:()=>{const i=st.items.find(x=>x.id===d.id);i&&buyModal(i)},
+    zoom:()=>{const o=ord(d.id);o&&openModal(`<img class="zoom" src="${img(o.shot)}">`)},
+    copy:()=>navigator.clipboard.writeText(ord(d.id).delivery).then(()=>toast('Copy ho gaya'),()=>toast('Copy nahi hua',1))};
+  if(S[a])return S[a]();
+  const R={
+    pay:async()=>{const i=st.items.find(x=>x.id===d.id);if(!i||i.sold)throw new Error('Item ab available nahi hai');
+      await newOrder({kind:'item',itemId:i.id,title:i.title,price:i.price},await shrink($('#sf').files[0]));closeModal();st.tab='my';render(true);toast('Order bhej diya ✅')},
+    cpay:async()=>{const r=$('#cr').value.trim(),p=Number($('#cb').value);if(r.length<5||!(p>0))throw new Error('Order aur sahi budget likho');
+      await newOrder({kind:'custom',title:'Custom: '+r.slice(0,40),request:r,contact:$('#cc').value.trim(),price:p},await shrink($('#sf').files[0]));st.tab='my';render(true);toast('Custom order bhej diya ✅')},
+    ok:()=>confirmOrder(ord(d.id)),
+    rej:async()=>{const n=prompt('Reject ka karan likho (buyer ko dikhega):');if(n===null)throw'x';await updateDoc(ref('orders',d.id),{status:'rejected',note:n})},
+    fix:async()=>{const o=ord(d.id),v=prompt('Buyer ko dikhne wala data:',o.delivery||'');if(v===null)throw'x';await updateDoc(ref('orders',d.id),{delivery:v});if(o.kind!=='custom'){await setDoc(ref('secrets',o.itemId),{v});await updateDoc(ref('items',o.itemId),{sold:true}).catch(()=>{})}},
+    qr:async()=>{await setDoc(ref('settings','qr'),{img:await shrink($('#qf').files[0],600)});toast('QR save ho gaya')},
+    add:async()=>{const t=$('#ti').value.trim(),p=Number($('#pr').value),sec=$('#se').value.trim();
+      if(!t||!(p>0))throw new Error('Title aur sahi price likho');if(!sec)throw new Error('Secret data zaroor likho');
+      const photo=await shrink($('#ph').files[0],700);
+      const r=await addDoc(collection(db,'items'),{type:$('#ty').value,title:t,price:p,desc:$('#de').value.trim(),photo,sold:false,ts:Date.now()});
+      try{await setDoc(ref('secrets',r.id),{v:sec})}catch(e){await deleteDoc(ref('items',r.id));throw e}
+      ['ti','pr','de','se','ph'].forEach(k=>$('#'+k).value='');toast('Item upload ho gaya ✅')},
+    price:async()=>{const p=Number(prompt('Naya price ₹:'));if(!(p>0))throw'x';await updateDoc(ref('items',d.id),{price:p})},
+    sec:async()=>{const v=prompt('Naya secret data:');if(!v)throw'x';await setDoc(ref('secrets',d.id),{v});toast('Secret save ho gaya')},
+    sold:()=>updateDoc(ref('items',d.id),{sold:!st.items.find(i=>i.id===d.id).sold}),
+    del:async()=>{if(!confirm('Item delete karna hai?'))throw'x';await deleteDoc(ref('items',d.id));await deleteDoc(ref('secrets',d.id))}};
+  if(R[a])run(b,R[a]);
+}
+document.addEventListener('click',e=>{if(e.target.classList.contains('modal'))return closeModal();const b=e.target.closest('[data-act]');if(b)act(b.dataset.act,b.dataset,b)});
+document.addEventListener('input',e=>{if(e.target.id==='q'){st.q=e.target.value;$('#grid').innerHTML=grid()}});
+document.addEventListener('focusout',()=>setTimeout(()=>{if(st.dirty&&!typing())render(true)},250));
+render(true);
 </script></body></html>
