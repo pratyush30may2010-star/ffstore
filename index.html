@@ -32,10 +32,12 @@ pre{white-space:pre-wrap;word-break:break-all;background:#0004;padding:10px;bord
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import{getFirestore,collection,doc,addDoc,setDoc,getDoc,updateDoc,onSnapshot,query,where}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import{getFirestore,collection,doc,addDoc,setDoc,getDoc,updateDoc,deleteDoc,onSnapshot,query,where}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+/* ====== SETUP: yahan apni values daalo ====== */
 const firebaseConfig={apiKey:"AIzaSyBRtbN4UfJfwUPT1tSJoVsQuoqW5f9-3p8",authDomain:"ffstore-84973.firebaseapp.com",projectId:"ffstore-84973",appId:"1:457072994201:web:e0dc375b2951ac8ce31508"};
-const OWNER_EMAIL="studentpratyush2010@gmail.com";
+const OWNER_EMAIL="studentpratyush2010@gmail.com";   // sirf ye email Owner Panel dekhega
+/* ============================================ */
 
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
 const $=s=>document.querySelector(s);
@@ -43,6 +45,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 let u=null,owner=false,tab='shop',items=[],orders=[],qr='',unsubs=[];
 window.S={};
 
+// image ko chhota karke text (base64) me badlo, taaki Storage ki zarurat na pade
 const shrink=f=>new Promise((res,rej)=>{if(!f)return rej();const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const k=Math.min(1,700/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.6))};i.src=r.result};r.readAsDataURL(f)});
 
 onAuthStateChanged(auth,async x=>{
@@ -61,13 +64,16 @@ function render(){
   const t=[['shop','Shop'],['my','Order History']].concat(owner?[['adm','Owner Panel']]:[]);
   $('#tabs').innerHTML=t.map(x=>`<button class="t ${tab==x[0]?'on':''}" onclick="S.tab('${x[0]}')">${x[1]}</button>`).join('');
   const v=$('#view');
-  if(tab=='shop')v.innerHTML=items.length?`<div class="grid">${items.map(i=>`<div class="card" onclick="S.buy('${i.id}')"><img class="p" src="${i.photo}"><div style="margin-top:6px"><span class="tag ${i.type=='Gmail'?'gm':''}">${esc(i.type)}</span></div><b>${esc(i.title)}</b><div class="mut">₹${esc(i.price)}</div></div>`).join('')}</div>`:'<div class="card mut">Abhi koi item nahi hai.</div>';
+  const live=items.filter(i=>!i.sold);
+  if(tab=='shop')v.innerHTML=live.length?`<div class="grid">${live.map(i=>`<div class="card" onclick="S.buy('${i.id}')"><img class="p" src="${i.photo}"><div style="margin-top:6px"><span class="tag ${i.type=='Gmail'?'gm':''}">${esc(i.type)}</span></div><b>${esc(i.title)}</b><div class="mut">₹${esc(i.price)}</div></div>`).join('')}</div>`:'<div class="card mut">Abhi koi item nahi hai.</div>';
   if(tab=='my'){const m=orders.filter(o=>o.buyer==u.uid).sort((a,b)=>b.ts-a.ts);
     v.innerHTML=m.length?m.map(o=>`<div class="card"><b>${esc(o.title)}</b> — ₹${esc(o.price)}<div class="mut">${o.status=='confirmed'?'✅ Confirmed':'⏳ Pending'} · ${new Date(o.ts).toLocaleString()}</div>${o.status=='confirmed'?`<pre>${esc(o.delivery)}</pre>`:''}</div>`).join(''):'<div class="card mut">Koi order nahi.</div>'}
   if(tab=='adm'&&owner){const p=orders.filter(o=>o.status=='pending');
     v.innerHTML=`<div class="card"><b>Naya item</b><select id="ty"><option>FF</option><option>Gmail</option></select><input id="ti" placeholder="Title"><input id="pr" placeholder="Price ₹" inputmode="numeric"><input id="ph" type="file" accept="image/*"><input id="se" placeholder="Secret data (confirm ke baad milega)"><button onclick="S.add()">Upload</button></div>
     <div class="card"><b>Payment QR</b><input id="qf" type="file" accept="image/*"><button onclick="S.setQr()">QR save</button></div>
-    <b>Pending orders (${p.length})</b>${p.map(o=>`<div class="card"><b>${esc(o.title)}</b> — ₹${esc(o.price)}<div class="mut">${esc(o.name)} · ${esc(o.email)}</div><img class="shot" src="${o.shot}"><br><button class="g" onclick="S.ok('${o.id}')">Confirm ✅</button></div>`).join('')}`}
+    <b>Pending orders (${p.length})</b>${p.map(o=>`<div class="card"><b>${esc(o.title)}</b> — ₹${esc(o.price)}<div class="mut">${esc(o.name)} · ${esc(o.email)}</div><img class="shot" src="${o.shot}"><br><button class="g" onclick="S.ok('${o.id}')">Confirm ✅</button></div>`).join('')}
+    <b>Confirmed orders</b>${orders.filter(o=>o.status=='confirmed').map(o=>`<div class="card"><b>${esc(o.title)}</b> — ${esc(o.email)}<pre>${esc(o.delivery||'(khali)')}</pre><button onclick="S.fix('${o.id}')">Delivery data badlo</button></div>`).join('')}
+    <b>Mere items</b>${items.map(i=>`<div class="card"><b>${esc(i.title)}</b> ₹${esc(i.price)} ${i.sold?'· 🔴 Sold':'· 🟢 Live'}<br><button onclick="S.sec('${i.id}')">Secret badlo</button> <button style="background:#dc2626" onclick="S.del('${i.id}')">Delete</button></div>`).join('')}`}
 }
 S.login=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>alert(e.message));
 S.out=()=>signOut(auth);S.tab=t=>{tab=t;render()};
@@ -79,6 +85,12 @@ S.buy=id=>{const i=items.find(x=>x.id==id);
 S.shot=async id=>{const i=items.find(x=>x.id==id);try{const shot=await shrink($('#sf').files[0]);
   await setDoc(doc(db,'orders',u.uid+'_'+id),{itemId:id,buyer:u.uid,name:u.displayName||'',email:u.email,title:i.title,price:i.price,shot,status:'pending',ts:Date.now()});
   $('#modal').innerHTML='';tab='my';render()}catch(e){alert('Screenshot chuno / error')}};
-S.ok=async oid=>{const o=orders.find(x=>x.id==oid);try{const s=await getDoc(doc(db,'secrets',o.itemId));
-  await updateDoc(doc(db,'orders',oid),{status:'confirmed',delivery:(s.data()||{}).v||''})}catch(e){alert('Confirm fail')}};
+S.ok=async oid=>{const o=orders.find(x=>x.id==oid);try{const r=await getDoc(doc(db,'secrets',o.itemId));let v=(r.data()||{}).v||'';
+  if(!v){v=prompt('Is item ka secret data khali hai. Buyer ko jo dena hai wo likho:')||'';if(!v)return;await setDoc(doc(db,'secrets',o.itemId),{v})}
+  await updateDoc(doc(db,'orders',oid),{status:'confirmed',delivery:v});
+  await updateDoc(doc(db,'items',o.itemId),{sold:true})}catch(e){alert('Confirm fail: '+e.message)}};
+S.fix=async oid=>{const o=orders.find(x=>x.id==oid);const v=prompt('Buyer ko dikhne wala data likho:',o.delivery||'');if(v===null)return;
+  try{await updateDoc(doc(db,'orders',oid),{delivery:v});await setDoc(doc(db,'secrets',o.itemId),{v});await updateDoc(doc(db,'items',o.itemId),{sold:true})}catch(e){alert(e.message)}};
+S.sec=async id=>{const v=prompt('Naya secret data:');if(!v)return;try{await setDoc(doc(db,'secrets',id),{v});alert('Save ho gaya')}catch(e){alert(e.message)}};
+S.del=async id=>{if(!confirm('Ye item delete karna hai?'))return;try{await deleteDoc(doc(db,'items',id));await deleteDoc(doc(db,'secrets',id))}catch(e){alert(e.message)}};
 </script></body></html>
