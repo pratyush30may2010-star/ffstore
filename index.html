@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="hi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FF & Gmail Store</title>
+<style>
+:root{--bg:#0e1020;--card:#191c33d9;--tx:#f4f4fa;--mut:#a6a8c4;--ac:#ff6a1a;--ok:#22c55e}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;color:var(--tx);background:var(--bg);min-height:100vh;overflow-x:hidden}
+.bg{position:fixed;inset:0;opacity:.16;pointer-events:none;display:flex;flex-direction:column;justify-content:space-around;font-weight:900}
+.bg span{font-size:26vw;line-height:1;white-space:nowrap;transform:rotate(-8deg)}.bg .a{color:var(--ac)}.bg .b{color:#ea4335;margin-left:10vw}
+main{position:relative;max-width:640px;margin:0 auto;padding:14px}
+h1{font-size:20px;margin:4px 0 10px}.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tabs{display:flex;gap:6px;margin:10px 0}
+button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:var(--ac);color:#fff;font-weight:600}
+button.t{background:var(--card);color:var(--tx)}button.t.on{background:var(--ac)}button.g{background:var(--ok)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:var(--card);border-radius:14px;padding:10px;margin-bottom:8px}
+img.p{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px}
+.tag{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--ac)}.tag.gm{background:#ea4335}
+.mut{color:var(--mut);font-size:13px}
+input,select{width:100%;padding:10px;border-radius:10px;border:1px solid #8886;background:var(--card);color:var(--tx);font:inherit;margin:4px 0}
+.modal{position:fixed;inset:0;background:#000a;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--bg);width:100%;max-width:640px;border-radius:18px 18px 0 0;padding:16px;max-height:90vh;overflow:auto}
+.qr{width:220px;max-width:70%;display:block;margin:10px auto;background:#fff;border-radius:10px}
+pre{white-space:pre-wrap;word-break:break-all;background:#0004;padding:10px;border-radius:10px}
+.shot{max-width:100%;max-height:260px;border-radius:10px}
+</style></head><body>
+<div class="bg"><span class="a">FF</span><span class="b">Gmail</span><span class="a">FF</span></div>
+<main>
+<div class="top"><h1>🔥 FF & ✉️ Gmail Store</h1><div id="auth"></div></div>
+<div class="tabs" id="tabs"></div><div id="view"></div>
+</main><div id="modal"></div>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import{getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import{getFirestore,collection,doc,addDoc,setDoc,getDoc,updateDoc,onSnapshot,query,where}from"https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const firebaseConfig={apiKey:"AIzaSyBRtbN4UfJfwUPT1tSJoVsQuoqW5f9-3p8",authDomain:"ffstore-84973.firebaseapp.com",projectId:"ffstore-84973",appId:"1:457072994201:web:e0dc375b2951ac8ce31508"};
+const OWNER_EMAIL="studentpratyush2010@gmail.com";
+
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let u=null,owner=false,tab='shop',items=[],orders=[],qr='',unsubs=[];
+window.S={};
+
+const shrink=f=>new Promise((res,rej)=>{if(!f)return rej();const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{const k=Math.min(1,700/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=i.width*k;c.height=i.height*k;c.getContext('2d').drawImage(i,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.6))};i.src=r.result};r.readAsDataURL(f)});
+
+onAuthStateChanged(auth,async x=>{
+  unsubs.forEach(f=>f());unsubs=[];u=x;owner=!!x&&x.email===OWNER_EMAIL;
+  if(x){await setDoc(doc(db,'users',x.uid),{name:x.displayName||'',email:x.email,last:Date.now()},{merge:true});
+    unsubs.push(onSnapshot(collection(db,'items'),s=>{items=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
+    const oq=owner?collection(db,'orders'):query(collection(db,'orders'),where('buyer','==',x.uid));
+    unsubs.push(onSnapshot(oq,s=>{orders=s.docs.map(d=>({id:d.id,...d.data()}));render()}));
+    unsubs.push(onSnapshot(doc(db,'settings','qr'),s=>{qr=(s.data()||{}).img||''}));}
+  render();
+});
+
+function render(){
+  $('#auth').innerHTML=u?`<span class="mut">${esc(u.displayName||u.email)}</span> <button class="t" onclick="S.out()">Logout</button>`:'';
+  if(!u){$('#tabs').innerHTML='';$('#view').innerHTML='<div class="card"><p>Order karne aur history dekhne ke liye Gmail se login karo.</p><button onclick="S.login()">Google se Login</button></div>';return}
+  const t=[['shop','Shop'],['my','Order History']].concat(owner?[['adm','Owner Panel']]:[]);
+  $('#tabs').innerHTML=t.map(x=>`<button class="t ${tab==x[0]?'on':''}" onclick="S.tab('${x[0]}')">${x[1]}</button>`).join('');
+  const v=$('#view');
+  if(tab=='shop')v.innerHTML=items.length?`<div class="grid">${items.map(i=>`<div class="card" onclick="S.buy('${i.id}')"><img class="p" src="${i.photo}"><div style="margin-top:6px"><span class="tag ${i.type=='Gmail'?'gm':''}">${esc(i.type)}</span></div><b>${esc(i.title)}</b><div class="mut">₹${esc(i.price)}</div></div>`).join('')}</div>`:'<div class="card mut">Abhi koi item nahi hai.</div>';
+  if(tab=='my'){const m=orders.filter(o=>o.buyer==u.uid).sort((a,b)=>b.ts-a.ts);
+    v.innerHTML=m.length?m.map(o=>`<div class="card"><b>${esc(o.title)}</b> — ₹${esc(o.price)}<div class="mut">${o.status=='confirmed'?'✅ Confirmed':'⏳ Pending'} · ${new Date(o.ts).toLocaleString()}</div>${o.status=='confirmed'?`<pre>${esc(o.delivery)}</pre>`:''}</div>`).join(''):'<div class="card mut">Koi order nahi.</div>'}
+  if(tab=='adm'&&owner){const p=orders.filter(o=>o.status=='pending');
+    v.innerHTML=`<div class="card"><b>Naya item</b><select id="ty"><option>FF</option><option>Gmail</option></select><input id="ti" placeholder="Title"><input id="pr" placeholder="Price ₹" inputmode="numeric"><input id="ph" type="file" accept="image/*"><input id="se" placeholder="Secret data (confirm ke baad milega)"><button onclick="S.add()">Upload</button></div>
+    <div class="card"><b>Payment QR</b><input id="qf" type="file" accept="image/*"><button onclick="S.setQr()">QR save</button></div>
+    <b>Pending orders (${p.length})</b>${p.map(o=>`<div class="card"><b>${esc(o.title)}</b> — ₹${esc(o.price)}<div class="mut">${esc(o.name)} · ${esc(o.email)}</div><img class="shot" src="${o.shot}"><br><button class="g" onclick="S.ok('${o.id}')">Confirm ✅</button></div>`).join('')}`}
+}
+S.login=()=>signInWithPopup(auth,new GoogleAuthProvider()).catch(e=>alert(e.message));
+S.out=()=>signOut(auth);S.tab=t=>{tab=t;render()};
+S.add=async()=>{try{const photo=await shrink($('#ph').files[0]);const r=await addDoc(collection(db,'items'),{type:$('#ty').value,title:$('#ti').value,price:$('#pr').value,photo,ts:Date.now()});
+  await setDoc(doc(db,'secrets',r.id),{v:$('#se').value});alert('Upload ho gaya')}catch(e){alert('Photo chuno / error')}};
+S.setQr=async()=>{try{await setDoc(doc(db,'settings','qr'),{img:await shrink($('#qf').files[0])});alert('QR save')}catch(e){alert('QR image chuno')}};
+S.buy=id=>{const i=items.find(x=>x.id==id);
+  $('#modal').innerHTML=`<div class="modal" onclick="if(event.target==this)this.remove()"><div class="sheet"><b>${esc(i.title)}</b> — ₹${esc(i.price)}<p class="mut">QR scan karke pay karo, phir screenshot upload karo.</p>${qr?`<img class="qr" src="${qr}">`:'<p class="mut">QR abhi set nahi hai.</p>'}<input id="sf" type="file" accept="image/*"><button onclick="S.shot('${id}')">Screenshot bhejo</button></div></div>`};
+S.shot=async id=>{const i=items.find(x=>x.id==id);try{const shot=await shrink($('#sf').files[0]);
+  await setDoc(doc(db,'orders',u.uid+'_'+id),{itemId:id,buyer:u.uid,name:u.displayName||'',email:u.email,title:i.title,price:i.price,shot,status:'pending',ts:Date.now()});
+  $('#modal').innerHTML='';tab='my';render()}catch(e){alert('Screenshot chuno / error')}};
+S.ok=async oid=>{const o=orders.find(x=>x.id==oid);try{const s=await getDoc(doc(db,'secrets',o.itemId));
+  await updateDoc(doc(db,'orders',oid),{status:'confirmed',delivery:(s.data()||{}).v||''})}catch(e){alert('Confirm fail')}};
+</script></body></html>
